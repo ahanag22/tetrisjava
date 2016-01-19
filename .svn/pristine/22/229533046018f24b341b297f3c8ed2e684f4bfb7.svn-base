@@ -1,0 +1,484 @@
+package view;
+import java.awt.BorderLayout;
+
+import java.awt.GridLayout;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Enumeration;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.swing.AbstractButton;
+import javax.swing.ButtonGroup;
+import javax.swing.JFrame;
+
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JSeparator;
+import javax.swing.KeyStroke;
+import javax.swing.Timer;
+
+
+import model.Board;
+import model.Piece;
+
+
+
+/**
+* The graphical user interface for Tetris.
+* 
+* @author Ahana Ghosh
+* @version Autumn 2015
+*/
+
+public class TetrisGUI  extends JFrame implements Observer {
+   /**
+    * The serial version UID.
+    */
+    private static final long serialVersionUID = 0;
+    /** number of rows. */
+    private static final int BOARD_HEIGHT = 20;
+    /** number of columns. */
+    private static final int BOARD_WIDTH = 10;
+    /** delay between ticks. */
+    private  static final int TIMER_SECOND = 1000;
+    /**  increasing delay between ticks. */
+    private  static final int TIMER_INCREASING_SECOND = 100;
+    /** score per line removed. */
+    private static final int SCORE_LINE = 100;
+    /** a Board. */
+    private Board myTetrisBoard;
+    /** the Timer. */  
+    private Timer myGameTimer;
+    /** a TetrisBoardPanel. */
+    private TetrisBoardPanel myBoardPanel;
+    /** a TetrisInformationPanel. */
+    private TetrisInformationPanel myInfoPanel;
+    /** a flag indicates if the game is paused. */
+    private boolean myIsNotPause  = true;
+    
+    /** queue of pieces to be fed into the board. */
+    private final Deque<Piece> myPieces = new ArrayDeque<Piece>();
+    /** a JMenuItem. */
+    private JMenuItem myStartTheNewGame;
+    /** a JMenuItem. */
+    private JMenuItem myEndTheGame;
+    /** Current chosen level by user. */
+    private int myInitialLevel;
+    
+    /**
+     * creating constructor.
+     * constructor is taking no argument.
+     */
+    public TetrisGUI() {
+        super();
+        setUpFrame();  
+    }
+    
+    /**
+     * a method that setting up the frame.
+     */
+    private void setUpFrame() {
+        
+        this.setTitle("Tetris");
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setBackground(null);
+        this.setResizable(false);
+        
+        // Create the board object.
+        myTetrisBoard = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        myTetrisBoard.addObserver(this);
+               
+        // Set-up key listeners which will be used to play the game.
+        setupKeyListeners();
+        
+        // Create a flow panel which contains the child panel.
+        final JPanel rootPanel = new JPanel();
+        
+        //Create a panel for displaying board        
+        myBoardPanel = new TetrisBoardPanel(BOARD_WIDTH, BOARD_HEIGHT);         
+        
+        // Create a panel for displaying next piece.
+        myInfoPanel = new TetrisInformationPanel(BOARD_WIDTH, BOARD_HEIGHT);
+        myInfoPanel.setBackground(null);
+        
+        rootPanel.setLayout(new GridLayout(1, 2));
+        
+        rootPanel.add(myBoardPanel); 
+        rootPanel.add(myInfoPanel);
+        
+        
+        // Add the mother panel.
+        add(rootPanel, BorderLayout.CENTER);
+        final JMenuBar menuBar = new JMenuBar();
+        menuBar.add(fileMenu());
+        menuBar.add(helpMenu());
+        menuBar.add(difficultyLevel());
+        setJMenuBar(menuBar);
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);        
+    }
+   
+    /**
+     * The Action Listener when invoked checks if the game is over
+     * if game is over, then stops the timer.
+     * otherwise calls step() method on the board and causing the current piece to fall. 
+     */
+    private void startPlaying() {
+        
+        final ActionListener timerCallback = new ActionListener() {
+            @Override
+            public void actionPerformed(final ActionEvent theEvent) {
+                if (myTetrisBoard.isGameOver()) {
+                    myGameTimer.stop();
+                } else {
+                    myTetrisBoard.step();            
+                }
+            }
+        };
+        
+        myGameTimer = new Timer(TIMER_SECOND, timerCallback);
+              
+    }
+    /**
+     * Key event handler utility.
+     * @param theEvent The event.
+     */
+    private void keyEventHandler(final KeyEvent theEvent) {
+        final int key = theEvent.getKeyCode();                
+        if (myIsNotPause && key == KeyEvent.VK_LEFT) {
+            callLeft();                   
+        } else if (myIsNotPause && key == KeyEvent.VK_RIGHT) {
+            callRight();
+        } else if (myIsNotPause && key == KeyEvent.VK_UP) {               
+            callUp();
+        } else if (myIsNotPause && key == KeyEvent.VK_DOWN) {
+            callDown();                  
+        } else if (myIsNotPause && key == KeyEvent.VK_END) {
+            callHardDrop();                  
+        } else if (myIsNotPause && key == KeyEvent.VK_SPACE) {
+            myGameTimer.stop();
+            myIsNotPause = false;
+        } else if (!myIsNotPause && key == KeyEvent.VK_ENTER) {
+            myGameTimer.start();
+            myIsNotPause = true;
+        }  
+    }
+    /**
+     * setting up key activities.
+     */
+    private void setupKeyListeners() {
+        addKeyListener(new KeyAdapter() {            
+            @Override
+            public void keyPressed(final KeyEvent theEvent) {
+                myKeyEvt(theEvent, "keyPressed");
+            }
+            private void myKeyEvt(final KeyEvent theEvent, final String theText) {
+                keyEventHandler(theEvent);
+            }
+        });
+    }
+    /**
+     * creating a file menu.
+     * @return it returns JMenu.
+     */
+    private JMenu fileMenu() {
+        final JMenu file = new JMenu("File");
+        myStartTheNewGame = new JMenuItem("Start New Game");
+        //set ACcelerator keys
+        myStartTheNewGame.setAccelerator(KeyStroke.getKeyStroke
+                                       (KeyEvent.VK_N, InputEvent.CTRL_MASK));
+        myStartTheNewGame.setEnabled(true);
+        
+      //adding action
+        myStartTheNewGame.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                //start a new game.
+                
+                myTetrisBoard.newGame(BOARD_WIDTH, BOARD_HEIGHT, myPieces);
+                myGameTimer.start();
+                myIsNotPause = true;
+                myInfoPanel.notifyGameOn();
+                myEndTheGame.setEnabled(true);
+                myStartTheNewGame.setEnabled(false);
+                myInfoPanel.resetScore();
+                myInfoPanel.resetClearedLines();
+                myInfoPanel.resetLevel(myInitialLevel);
+                }            
+            });
+        
+        file.add(myStartTheNewGame);
+        file.add(new JSeparator()); // SEPARATOR
+        myEndTheGame = new JMenuItem("End Game");
+        //set ACcelerator keys
+        myEndTheGame.setAccelerator(KeyStroke.getKeyStroke
+                                    (KeyEvent.VK_E, InputEvent.CTRL_MASK));
+        myEndTheGame.setEnabled(false);
+      
+            
+        
+      //adding action
+        myEndTheGame.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                //ends the game.
+               
+                myGameTimer.stop();
+                myIsNotPause = false;
+                myInfoPanel.notifyGameEnded();
+                myEndTheGame.setEnabled(false);
+                myStartTheNewGame.setEnabled(true);
+                }
+            
+            });
+        
+        file.add(myEndTheGame);
+        return file;
+    }
+    /**
+     * create a help menu which shows some messages.
+     * @return returns JMenu.
+     */
+    private JMenu helpMenu() {
+          //Build help menu.
+        final JMenu help = new JMenu("Help");
+        help.setMnemonic(KeyEvent.VK_H);
+        final JMenuItem about = new JMenuItem("About...");
+        about.setMnemonic(KeyEvent.VK_A);
+        about.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                helpMsg(); 
+            }
+        });
+        help.add(about);
+        return help;
+    }
+    /**
+     * a helper method that helps to pop up a message.
+     */
+    private void helpMsg() {
+        JOptionPane.showMessageDialog(this, 
+            "100 points addeed for removing each row." 
+            + System.lineSeparator() 
+            + "By removal of two rows one after another, it" 
+            + System.lineSeparator()
+            + "takes the game to the next level. When next" 
+            + System.lineSeparator() 
+            + "level is reached delay time gets decreased " 
+            + System.lineSeparator() 
+            + "by 100. The maximum level can be reached is 10." 
+            + System.lineSeparator() 
+            + "After that game will continue running without a" 
+            + System.lineSeparator() 
+            + "change in level.");
+        
+    }
+    /**
+     * Send the integer equivalent of button selected.
+     * @param theButtonGroup the button group.
+     * @return the integer equivalent of button
+     */
+    private int getSelectedLevel(final ButtonGroup theButtonGroup) {
+        int selectedButton = 1;
+        for (
+            final Enumeration<AbstractButton> buttons = theButtonGroup.getElements(); 
+            buttons.hasMoreElements();) {
+            
+            final AbstractButton button = buttons.nextElement();
+
+            if (button.isSelected()) {
+                selectedButton = Integer.parseInt(button.getText());
+                break;
+            }
+        }
+
+        return selectedButton;
+    }
+    /**
+     * 
+     * @return a JMenu of level of difficulty.
+     */
+    private JMenu difficultyLevel() {
+        final JMenu difficulty = new JMenu("Difficuty Level");
+        difficulty.setMnemonic(KeyEvent.VK_D);        
+        final ButtonGroup difficulties = new ButtonGroup();        
+        final JRadioButtonMenuItem level1 = new JRadioButtonMenuItem("1");
+        difficulties.add(level1);       
+        level1.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level1);
+        level1.setSelected(true);        
+        final JRadioButtonMenuItem level2 = new JRadioButtonMenuItem("2");
+        difficulties.add(level2);        
+        level2.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });        
+        difficulty.add(level2);        
+        final JRadioButtonMenuItem level3 = new JRadioButtonMenuItem("3");
+        difficulties.add(level3);
+        level3.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level3);
+        final JRadioButtonMenuItem level4 = new JRadioButtonMenuItem("4");
+        difficulties.add(level4);        
+        level4.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level4);
+        final JRadioButtonMenuItem level5 = new JRadioButtonMenuItem("5");
+        difficulties.add(level5);        
+        level5.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level5);
+        final JRadioButtonMenuItem level6 = new JRadioButtonMenuItem("6");
+        difficulties.add(level6);      
+        level6.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level6);
+        final JRadioButtonMenuItem level7 = new JRadioButtonMenuItem("7");
+        difficulties.add(level7);
+        level7.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level7);
+        final JRadioButtonMenuItem level8 = new JRadioButtonMenuItem("8");
+        difficulties.add(level8);
+        level8.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level8);
+        final JRadioButtonMenuItem level9 = new JRadioButtonMenuItem("9");
+        difficulties.add(level9);        
+        level9.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level9);
+        final JRadioButtonMenuItem level10 = new JRadioButtonMenuItem("10");
+        difficulties.add(level10);      
+        level10.addActionListener(new ActionListener() {
+            public void actionPerformed(final ActionEvent theEvent) {
+                userSelectedLevel(getSelectedLevel(difficulties));
+                }
+            });
+        difficulty.add(level10);
+        return difficulty;
+    }
+    /**
+     * Calls to set user selected level.
+     * @param theLevel The level.
+     */
+    private void userSelectedLevel(final int theLevel) {
+      //starts a new game with the level of difficulty 10.
+        myGameTimer.setDelay(TIMER_SECOND);
+        myGameTimer.setDelay(myGameTimer.getDelay() - TIMER_INCREASING_SECOND * theLevel); 
+        myInitialLevel = theLevel;
+        myInfoPanel.updateLevel(theLevel);
+        
+    }
+    /**
+     * piece goes left.
+     */
+    private void callLeft() {
+        this.myTetrisBoard.moveLeft();
+    }
+    /**
+     * piece goes right.
+     */
+    private void callRight() {
+        this.myTetrisBoard.moveRight();
+    }
+    /**
+     * piece comes down.
+     */
+    private void callDown() {
+        this.myTetrisBoard.moveDown();
+    }
+    /**
+     * piece drops.
+     */
+    private void callHardDrop() {
+        this.myTetrisBoard.hardDrop();
+    }
+    /**
+     * piece rotates.
+     */
+    private void callUp() {
+        this.myTetrisBoard.rotate();
+    }
+    /**
+     * updates all the changes.
+     */
+    @Override
+    public void update(final Observable theO, final Object theArg1) {
+        if (this.myTetrisBoard.isGameOver()) {
+            this.myGameTimer.stop();
+            this.myInfoPanel.notifyGameOver();
+            this.myStartTheNewGame.setEnabled(true);
+            this.myEndTheGame.setEnabled(false);
+        } else {
+            final String boardAsString = this.myTetrisBoard.toString();
+            
+            // Repaint the board.
+            this.myBoardPanel.setCurerntString(boardAsString);
+            this.myBoardPanel.repaint();
+            
+            // Repaint the information panel.
+            this.myInfoPanel.setNextPieceString(this.myTetrisBoard.getNextPiece().toString());
+            final int linesRemove = this.myTetrisBoard.getLinesRemoved();
+            this.myInfoPanel.clearedLines(linesRemove);
+            this.myInfoPanel.addToScore(linesRemove * SCORE_LINE);
+            
+            if (this.myInfoPanel.levelJumped()) {
+                final int currentGameDelay = this.myGameTimer.getDelay();
+                if (currentGameDelay > 0) {
+                    this.myGameTimer.setDelay(currentGameDelay - TIMER_INCREASING_SECOND);   
+                }
+            }
+            
+            this.myInfoPanel.nextLevelTogo();
+            this.myInfoPanel.repaint();            
+        }
+    }
+    
+    /**
+     * This method create and show the GUI on the screen.
+     * it returns void
+     * this method call other helper methods 
+     */
+    public void startGame() {
+        // Render Game
+        startPlaying();
+    }  
+}

@@ -1,0 +1,105 @@
+package view;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.border.LineBorder;
+
+/**
+* A class that shows all the information about the Tetris game. 
+* @author Ahana Ghosh
+* @version Autumn 2015
+*/
+public class TetrisInformationPanel extends JPanel {
+    /**  A generated serial version UID for object Serialization. */
+    private static final long serialVersionUID = 8891249398592291793L;
+    
+    /** width of a cell. */
+    private static final int CELL_WIDTH = 20;
+    /** number of rows. */
+    private static final int NUM_ROWS = 3;
+    /** number of Font size. */
+    private static final int NUM_FONT_SIZE = 20;
+    /** number of Font size big. */
+    private static final int NUM_FONT_SIZE_BIG = 28;
+    
+    /** the width. */
+    private final int myWidth;
+    /** the height. */
+    private final int myHeight;  
+    /** a TetrisNextPiecePanel. */
+    private TetrisNextPiecePanel myNextPiece;
+    /** a String that shows status. */
+    private JLabel myStatusString;
+    
+    /**
+     * Creating a  Constructor.
+     * @param theColumnCount is a number of columns. 
+     * @param theRowCount is number of rows. 
+     */
+    public TetrisInformationPanel(
+                  final int theColumnCount,
+                  final int theRowCount) {
+        super();  
+        this.myWidth = theColumnCount * CELL_WIDTH;
+        this.myHeight = theRowCount * CELL_WIDTH;  
+        this.setUpPanel();
+                
+    }
+    
+    /**
+     * Sets up the appearance.
+     */
+    private void setUpPanel() {      
+        this.setPreferredSize(new Dimension(myWidth, myHeight));        
+        // Set this panel as a grid panel with 1 column, 3 rows.        
+        this.setLayout(new GridLayout(NUM_ROWS, 1));        
+        // Create the next piece panel.
+        this.myNextPiece = new TetrisNextPiecePanel();
+        this.add(myNextPiece);        
+        // Add another panel which will show game instruction.
+        final HowToPlayPanel instructionsPanel = new HowToPlayPanel();
+        this.add(instructionsPanel);          
+        // Add a JLabel which will show some status.
+        this.myStatusString = new JLabel("Game is ON");
+        this.myStatusString.setForeground(Color.GREEN);
+        this.myStatusString.setFont(new Font("Times", Font.BOLD, NUM_FONT_SIZE));
+        this.myStatusString.setBackground(null);
+        this.myStatusString.setHorizontalAlignment(JLabel.CENTER);
+        this.add(this.myStatusString);   
+    }
+    
+    /**
+     * an overridden method used to paint shapes.
+     * @param theGraphics is a Graphics. 
+     */
+    @Override
+    public void paintComponent(final Graphics theGraphics) {
+        super.paintComponent(theGraphics);
+        this.myNextPiece.repaint();
+    }       
+    
+    /**
+     * Sets the next piece string.
+     * @param theString is the next piece string. 
+     */
+    public void setNextPieceString(final String theString) {
+        this.myNextPiece.setNextPieceString(theString);
+    }  
+    
+    /**
+     * Notifies the UI that the Game is over.
+     */
+    public void notifyGameOver() {
+        this.myStatusString.setText("Game Over");
+        final LineBorder line = new LineBorder(Color.RED, 2, true);
+        this.myStatusString.setBorder(line);
+        this.myStatusString.setForeground(Color.RED);
+        this.myStatusString.setFont(new Font("Serif", Font.BOLD, NUM_FONT_SIZE_BIG));
+        
+    }
+}

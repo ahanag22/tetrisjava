@@ -1,0 +1,205 @@
+
+
+package view;
+
+
+import java.awt.BorderLayout;
+
+import java.awt.GridLayout;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.Observable;
+import java.util.Observer;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+import model.Board;
+
+
+/**
+* The graphical user interface for Tetris.
+* 
+* @author Ahana Ghosh
+* @version Autumn 2015
+*/
+
+public class TetrisGUI  extends JFrame implements Observer {
+   /**
+    * The serial version UID.
+    */
+    private static final long serialVersionUID = 0;
+    /** number of rows. */
+    private static final int BOARD_HEIGHT = 20;
+    /** number of columns. */
+    private static final int BOARD_WIDTH = 10;
+    /** delay between ticks. */
+    private static final int TIMER_SECOND = 1000;
+    /** a Board. */
+    private Board myTetrisBoard;
+    /** the Timer. */  
+    private Timer myGameTimer;
+    /** a TetrisBoardPanel. */
+    private TetrisBoardPanel myBoardPanel;
+    /** a TetrisInformationPanel. */
+    private TetrisInformationPanel myInfoPanel;
+    /**
+     * creating constructor.
+     * constructor is taking no argument.
+     */
+    public TetrisGUI() {
+        super();
+        setUpFrame();  
+    }
+    
+    /**
+     * a method that setting up the frame.
+     */
+    public final void setUpFrame() {
+        
+        this.setTitle("Tetris");
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setBackground(null);
+        this.setResizable(false);
+        
+        // Create the board object.
+        myTetrisBoard = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        myTetrisBoard.addObserver(this);
+               
+        // Set-up key listeners which will be used to play the game.
+        setupKeyListeners();
+        
+        // Create a flow panel which contains the child panel.
+        final JPanel rootPanel = new JPanel();
+        
+        //Create a panel for displaying board        
+        myBoardPanel = new TetrisBoardPanel(BOARD_WIDTH, BOARD_HEIGHT);         
+        
+        // Create a panel for displaying next piece.
+        myInfoPanel = new TetrisInformationPanel(BOARD_WIDTH, BOARD_HEIGHT);
+        myInfoPanel.setBackground(null);
+        
+        rootPanel.setLayout(new GridLayout(1, 2));
+        
+        rootPanel.add(myBoardPanel); 
+        rootPanel.add(myInfoPanel);
+        
+        
+        // Add the mother panel.
+        add(rootPanel, BorderLayout.CENTER);
+        
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);        
+    }
+    /**
+     * The Action Listener when invoked checks if the game is over
+     * if game is over, then stops the timer.
+     * otherwise calls step() method on the board and causing the current piece to fall. 
+     */
+    private void startPlaying() {
+        
+        final ActionListener timerCallback = new ActionListener() {
+            @Override
+            public void actionPerformed(final ActionEvent theEvent) {
+                if (myTetrisBoard.isGameOver()) {
+                    myGameTimer.stop();
+                } else {
+                    myTetrisBoard.step();            
+                }
+            }
+        };
+        
+        myGameTimer = new Timer(TIMER_SECOND, timerCallback);
+        myGameTimer.start();        
+    }
+    /**
+     * setting up key activities.
+     */
+    private void setupKeyListeners() {
+        addKeyListener(new KeyAdapter() {            
+            @Override
+            public void keyPressed(final KeyEvent theEvent) {
+                myKeyEvt(theEvent, "keyPressed");
+            }
+            private void myKeyEvt(final KeyEvent theEvent, final String theText) {
+                final int key = theEvent.getKeyCode();
+                if (key == KeyEvent.VK_LEFT) {
+                    callLeft();                   
+                } else if (key == KeyEvent.VK_RIGHT) {
+                    callRight();
+                } else if (key == KeyEvent.VK_UP) {               
+                    callUp();
+                    } else if (key == KeyEvent.VK_DOWN) {
+                    callDown();                  
+                } else if (key == KeyEvent.VK_END) {
+                    callHardDrop();                  
+                }
+            }
+        });
+    }
+    
+    /**
+     * piece goes left.
+     */
+    private void callLeft() {
+        this.myTetrisBoard.moveLeft();
+    }
+    /**
+     * piece goes right.
+     */
+    private void callRight() {
+        this.myTetrisBoard.moveRight();
+    }
+    /**
+     * piece comes down.
+     */
+    private void callDown() {
+        this.myTetrisBoard.moveDown();
+    }
+    /**
+     * piece drops.
+     */
+    private void callHardDrop() {
+        this.myTetrisBoard.hardDrop();
+    }
+    /**
+     * piece rotates.
+     */
+    private void callUp() {
+        this.myTetrisBoard.rotate();
+    }
+    /**
+     * updates all the changes.
+     */
+    @Override
+    public void update(final Observable theO, final Object theArg1) {
+        if (this.myTetrisBoard.isGameOver()) {
+            this.myGameTimer.stop();
+            this.myInfoPanel.notifyGameOver();
+        } else {
+            final String boardAsString = this.myTetrisBoard.toString();
+            
+            // Repaint the board.
+            this.myBoardPanel.setCurerntString(boardAsString);
+            this.myBoardPanel.repaint();
+            
+            // Repaint the information panel.
+            this.myInfoPanel.setNextPieceString(this.myTetrisBoard.getNextPiece().toString());
+            this.myInfoPanel.repaint();            
+        }
+    }          
+    
+    /**
+     * This method create and show the GUI on the screen.
+     * it returns void
+     * this method call other helper methods 
+     */
+    public void startGame() {
+        // Render Game
+        startPlaying();
+    }  
+}
